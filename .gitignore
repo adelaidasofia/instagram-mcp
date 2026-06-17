@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Virtualenvs
+.venv/
+venv/
+
+# Secrets + local state — NEVER commit
+admin.env
+.env
+accounts.json
+tokens.json
+audit.log.jsonl
+*.log.jsonl
+
+# Build
+dist/
+build/
+uv.lock

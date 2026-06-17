@@ -1,0 +1,91 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "instagram-mcp"
+version = "0.1.0"
+description = "Official Instagram Graph API MCP. Multi-account read, publish, comments, analytics + (review-gated) DMs for Instagram Business/Creator accounts. ToS-safe, no private API."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Adelaida Diaz-Roa" }]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "instagram",
+    "instagram-graph-api",
+    "social-media",
+    "social-media-management",
+    "fastmcp",
+    "claude",
+    "anthropic",
+    "meta",
+    "content-publishing",
+    "analytics",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet",
+    "Topic :: Office/Business",
+]
+dependencies = [
+    "fastmcp>=3.2.3,<4.0",
+    "httpx>=0.27,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9.0",
+    "ruff>=0.8,<1.0",
+]
+
+[project.urls]
+Homepage = "https://diazroa.com"
+Repository = "https://github.com/adelaidasofia/instagram-mcp"
+Issues = "https://github.com/adelaidasofia/instagram-mcp/issues"
+
+[tool.hatch.build.targets.wheel]
+only-include = [
+    "server.py",
+    "graph_client.py",
+    "auth.py",
+    "audit.py",
+    "validators.py",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/server.py",
+    "/graph_client.py",
+    "/auth.py",
+    "/audit.py",
+    "/validators.py",
+    "/README.md",
+    "/SETUP.md",
+    "/CHANGELOG.md",
+    "/LICENSE",
+    "/pyproject.toml",
+    "/requirements.txt",
+    "/.env.example",
+    "/tests",
+]
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
