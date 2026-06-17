@@ -17,6 +17,24 @@ names the equivalent permission `instagram_business_manage_messages` and skips t
 Both require App Review + Business Verification. This server is built for the
 Facebook-Login path.)
 
+## Serving multiple accounts or clients — review once
+
+App Review is a **once-per-app** cost, not once-per-account. If you manage several
+Instagram accounts (your own brands, or clients), do the review on **one business-owned,
+business-verified app**, then connect each account to that same app via the Facebook Login
+OAuth flow. The reviewed app's Advanced Access covers every account that authorizes it —
+this is how Buffer / Hootsuite / Later operate. Review on a personal/throwaway app and you
+will have to redo it for the real product.
+
+## Replying after 24 hours — request `human_agent` too
+
+Standard messaging only lets you reply within **24 hours** of the user's last message. If a
+human on your team needs to reply later (weekends, escalation), request the **`human_agent`**
+permission **in the same submission** — it extends the window to **7 days** for a
+human-sent reply. It's a separate review item, so bundling it now avoids a second multi-week
+review cycle. (`send_message` does not attach a tag yet; out-of-window sends need the
+`HUMAN_AGENT` tag passed through.)
+
 ## Before you submit
 
 1. **Instagram Professional account** (Business or Creator) connected to a Facebook Page.
@@ -84,7 +102,7 @@ re-recording the specific shot, not rebuilding the submission.
 ## 24-hour window + message tags (important for client use)
 
 You can reply freely for **24 hours** after a user's last message (standard messaging).
-Outside that window you need a **message tag** (e.g. `HUMAN_AGENT`, which needs its own
-approval) or a paid path. `send_message` does **not** attach a tag, so out-of-window sends
-are rejected by Meta. Reply inside 24h, or extend the server to pass a tag if your use case
-needs it.
+Outside that window you need the **`HUMAN_AGENT`** tag (extends to a 7-day human-reply
+window — request the `human_agent` permission, ideally in the same submission; see above) or
+a paid message tag. `send_message` does **not** attach a tag, so out-of-window sends are
+rejected by Meta until the server is extended to pass one. Reply inside 24h until then.
