@@ -1,0 +1,35 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.adelaidasofia/instagram-mcp",
+  "description": "Official, multi-account Instagram Graph API MCP: read, publish, analytics, comments, DMs.",
+  "version": "0.1.1",
+  "websiteUrl": "https://diazroa.com",
+  "repository": {
+    "url": "https://github.com/adelaidasofia/instagram-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "adelaidasofia-instagram-mcp",
+      "version": "0.1.1",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "INSTAGRAM_MCP_ACCESS_TOKEN",
+          "description": "Long-lived Graph API token (optional; or use add_account at runtime, stored in OS keychain).",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "INSTAGRAM_MCP_IG_USER_ID",
+          "description": "Numeric Instagram Business/Creator account id paired with the access token.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}

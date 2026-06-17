@@ -23,10 +23,10 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pytest ruff
+          pip install -e ".[dev]"
       - name: Ruff
         run: ruff check .
       - name: Import smoke
-        run: python -c "import server; print('instagram-mcp imports cleanly')"
+        run: python -c "import instagram_mcp.server; print('instagram-mcp imports cleanly')"
       - name: Pytest
         run: python -m pytest tests/ -v

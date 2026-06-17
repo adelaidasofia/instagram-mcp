@@ -21,10 +21,18 @@ Most "Instagram automation" tools either (a) wrap the **unofficial** private API
 
 ## Install
 
+From PyPI:
+
+```bash
+pip install adelaidasofia-instagram-mcp
+```
+
+Or from source:
+
 ```bash
 git clone https://github.com/adelaidasofia/instagram-mcp
 cd instagram-mcp
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+python3 -m venv .venv && .venv/bin/pip install -e .
 ```
 
 Register it with your MCP client (Claude Desktop / Claude Code) — single-account zero-config path:
@@ -33,8 +41,7 @@ Register it with your MCP client (Claude Desktop / Claude Code) — single-accou
 {
   "mcpServers": {
     "instagram": {
-      "command": "/absolute/path/instagram-mcp/.venv/bin/python",
-      "args": ["/absolute/path/instagram-mcp/server.py"],
+      "command": "instagram-mcp",
       "env": {
         "INSTAGRAM_MCP_ACCESS_TOKEN": "EAA...your-long-lived-token...",
         "INSTAGRAM_MCP_IG_USER_ID": "17841400000000000"
@@ -43,6 +50,8 @@ Register it with your MCP client (Claude Desktop / Claude Code) — single-accou
   }
 }
 ```
+
+`instagram-mcp` is the console script the package installs. From a source checkout it lives at `.venv/bin/instagram-mcp`, or run the module directly with `python -m instagram_mcp.server`.
 
 Or skip the env vars and call `add_account` at runtime (token goes to your OS keychain). See [Multiple accounts](#multiple-accounts).
 
@@ -94,4 +103,4 @@ Full App Review walkthrough (screencast shot list, reviewer test-instructions te
 
 MIT — see [LICENSE](LICENSE).
 
-Built by [Adelaida Diaz-Roa](https://diazroa.com).
+Built by Adelaida Diaz-Roa. Full install or team version at [diazroa.com](https://diazroa.com).

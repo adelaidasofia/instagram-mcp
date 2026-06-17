@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "instagram-mcp"
-version = "0.1.0"
+name = "adelaidasofia-instagram-mcp"
+version = "0.1.1"
 description = "Official Instagram Graph API MCP. Multi-account read, publish, comments, analytics + (review-gated) DMs for Instagram Business/Creator accounts. ToS-safe, no private API."
 readme = "README.md"
 license = "MIT"
@@ -53,22 +53,15 @@ Homepage = "https://diazroa.com"
 Repository = "https://github.com/adelaidasofia/instagram-mcp"
 Issues = "https://github.com/adelaidasofia/instagram-mcp/issues"
 
+[project.scripts]
+instagram-mcp = "instagram_mcp.server:run"
+
 [tool.hatch.build.targets.wheel]
-only-include = [
-    "server.py",
-    "graph_client.py",
-    "auth.py",
-    "audit.py",
-    "validators.py",
-]
+packages = ["instagram_mcp"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/server.py",
-    "/graph_client.py",
-    "/auth.py",
-    "/audit.py",
-    "/validators.py",
+    "/instagram_mcp",
     "/README.md",
     "/SETUP.md",
     "/CHANGELOG.md",
