@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import graph_client
+from instagram_mcp import graph_client
 
 ACCOUNTS_PATH = Path(os.environ.get("INSTAGRAM_MCP_ACCOUNTS_PATH") or
                      os.path.expanduser("~/.claude/instagram-mcp/accounts.json"))

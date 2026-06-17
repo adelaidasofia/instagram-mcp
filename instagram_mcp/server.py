@@ -1,4 +1,4 @@
-"""instagram-mcp v0.1.0 — official Instagram Graph API MCP.
+"""instagram-mcp v0.1.1 — official Instagram Graph API MCP.
 
 A self-contained, multi-account wrapper over the OFFICIAL Instagram Graph API
 (graph.facebook.com). Read, publish, comment, and pull analytics for any
@@ -40,10 +40,8 @@ from typing import Any
 
 from fastmcp import FastMCP
 
-import audit
-import auth
-import graph_client
-import validators as V
+from instagram_mcp import audit, auth, graph_client
+from instagram_mcp import validators as V
 
 mcp = FastMCP("instagram-mcp")
 
@@ -634,5 +632,10 @@ def _json_str(s: str) -> str:
     return json.dumps(s, ensure_ascii=False)
 
 
-if __name__ == "__main__":
+def run() -> None:
+    """Entrypoint for the ``instagram-mcp`` console script and ``python -m`` execution."""
     mcp.run()
+
+
+if __name__ == "__main__":
+    run()
