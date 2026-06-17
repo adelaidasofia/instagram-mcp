@@ -81,6 +81,8 @@ Tokens are stored in the **macOS keychain** (or a `chmod 600` file on other plat
 
 The DM tools require the `instagram_manage_messages` permission, which Meta grants **only through App Review** (typically weeks, and stricter in 2025–2026). Until then, the DM tools fail loud with that instruction rather than silently no-op. Once your app is approved and the token carries the scope, set `INSTAGRAM_MCP_DM_ENABLED=1`. Note Instagram's 24-hour standard-messaging window applies.
 
+Full App Review walkthrough (screencast shot list, reviewer test-instructions template, privacy-policy + business-verification requirements, post-approval flip, message-tag caveat): **[docs/APP_REVIEW.md](docs/APP_REVIEW.md)**.
+
 ## Safety
 
 - **Egress is pinned** to the Meta host allow-list (`graph.facebook.com` / `graph.instagram.com`). A general SSRF guard (RFC1918 / loopback / link-local / CGNAT / cloud-metadata, fail-closed DNS) backs any URL handling.

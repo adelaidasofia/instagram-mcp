@@ -62,6 +62,8 @@ Verify with `healthcheck` — it does a live profile read and reports your usern
 
 DM tools need `instagram_manage_messages`, granted only via **Meta App Review**. Submit your app for review with a screencast of the DM use case and opt-out handling. Once approved and your token carries the scope, set `INSTAGRAM_MCP_DM_ENABLED=1`.
 
+See **[docs/APP_REVIEW.md](docs/APP_REVIEW.md)** for the full submission walkthrough — screencast shot list, reviewer test-instructions template, privacy-policy + data-deletion requirements, business verification, the 24-hour-window / message-tag caveat, and the post-approval flip.
+
 ## Token refresh
 
 Long-lived tokens last ~60 days. Refresh before expiry:

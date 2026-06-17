@@ -3,6 +3,11 @@
 All notable changes to instagram-mcp are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `docs/APP_REVIEW.md` — full Meta App Review walkthrough to unlock the DM tools: login-path note, business-verification + privacy-policy requirements, screencast shot list, reviewer test-instructions template, post-approval flip, and the 24h-window / message-tag caveat. Linked from README + SETUP.
+
 ## [0.1.0] — 2026-06-16
 
 Initial release.
