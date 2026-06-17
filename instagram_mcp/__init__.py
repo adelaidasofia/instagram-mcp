@@ -5,4 +5,4 @@ analytics, and (review-gated) DMs over the official Instagram Graph API.
 Distributed on PyPI as ``adelaidasofia-instagram-mcp``.
 """
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"

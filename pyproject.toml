@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "adelaidasofia-instagram-mcp"
-version = "0.1.1"
+version = "0.1.2"
 description = "Official Instagram Graph API MCP. Multi-account read, publish, comments, analytics + (review-gated) DMs for Instagram Business/Creator accounts. ToS-safe, no private API."
 readme = "README.md"
 license = "MIT"

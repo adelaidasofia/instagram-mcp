@@ -1,4 +1,4 @@
-"""instagram-mcp v0.1.1 — official Instagram Graph API MCP.
+"""instagram-mcp v0.1.2 — official Instagram Graph API MCP.
 
 A self-contained, multi-account wrapper over the OFFICIAL Instagram Graph API
 (graph.facebook.com). Read, publish, comment, and pull analytics for any

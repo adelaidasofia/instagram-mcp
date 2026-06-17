@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.adelaidasofia/instagram-mcp",
   "description": "Official, multi-account Instagram Graph API MCP: read, publish, analytics, comments, DMs.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "websiteUrl": "https://diazroa.com",
   "repository": {
     "url": "https://github.com/adelaidasofia/instagram-mcp",
@@ -12,8 +12,10 @@
     {
       "registryType": "pypi",
       "identifier": "adelaidasofia-instagram-mcp",
-      "version": "0.1.1",
-      "transport": { "type": "stdio" },
+      "version": "0.1.2",
+      "transport": {
+        "type": "stdio"
+      },
       "environmentVariables": [
         {
           "name": "INSTAGRAM_MCP_ACCESS_TOKEN",

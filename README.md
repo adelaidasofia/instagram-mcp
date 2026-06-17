@@ -1,5 +1,7 @@
 # instagram-mcp
 
+<!-- mcp-name: io.github.adelaidasofia/instagram-mcp -->
+
 An [MCP](https://modelcontextprotocol.io) server for the **official Instagram Graph API**. Read, publish, comment, and pull analytics across one or many Instagram **Business/Creator** accounts from Claude (or any MCP client) — ToS-safe, no private/reverse-engineered API.
 
 29 tools across accounts, media, publishing, insights, comments, discovery, and (review-gated) direct messages.

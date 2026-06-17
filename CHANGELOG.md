@@ -3,6 +3,11 @@
 All notable changes to instagram-mcp are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is [SemVer](https://semver.org/).
 
+## [0.1.2] — 2026-06-17
+
+### Added
+- `mcp-name` marker in the README so the MCP registry can validate PyPI package ownership (`io.github.adelaidasofia/instagram-mcp`). No code or tool-surface change.
+
 ## [0.1.1] — 2026-06-17
 
 ### Added
@@ -29,5 +34,6 @@ Initial release.
 - Multi-account support with OS-keychain token storage (chmod-600 file fallback); tokens never echoed or logged.
 - Safety: Meta-host egress allow-list + fail-closed SSRF guard; `sanitize_error` scrubber (Meta `EAA…`/`IGQV…` tokens, bearer headers, app secrets, API keys); 4-field JSONL audit; INPUT-rail validation.
 
+[0.1.2]: https://github.com/adelaidasofia/instagram-mcp/releases/tag/v0.1.2
 [0.1.1]: https://github.com/adelaidasofia/instagram-mcp/releases/tag/v0.1.1
 [0.1.0]: https://github.com/adelaidasofia/instagram-mcp/releases/tag/v0.1.0
