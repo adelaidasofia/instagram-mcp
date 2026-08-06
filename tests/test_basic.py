@@ -87,7 +87,7 @@ def test_validate_hashtag():
 
 def test_validate_username():
     from instagram_mcp import validators as V
-    assert V.validate_username("@adelaida.ig") == "adelaida.ig"
+    assert V.validate_username("@example.user") == "example.user"
     with pytest.raises(V.ValidationError):
         V.validate_username("bad/name")
 
