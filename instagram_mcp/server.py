@@ -34,6 +34,7 @@ INSTAGRAM_MCP_IG_USER_ID for a single zero-config account labelled "env".
 
 from __future__ import annotations
 
+import json
 import os
 import time
 from typing import Any
@@ -135,7 +136,10 @@ def _wait_container_ready(client: graph_client.GraphClient, container_id: str,
         f"media container {container_id} not ready after {timeout_s}s", error_class="timeout")
 
 
-def _publish_container(client: graph_client.GraphClient, ig_user_id: str, container_id: str) -> dict[str, Any]:
+def _publish_container(client: graph_client.GraphClient, ig_user_id: str, container_id: str | None) -> dict[str, Any]:
+    if not container_id:
+        raise graph_client.GraphAPIError("Graph API returned no container id; nothing published",
+                                         error_class="upstream_error")
     published = client.post(f"{ig_user_id}/media_publish", creation_id=container_id)
     return {"ok": True, "media_id": published.get("id"), "container_id": container_id}
 
@@ -421,7 +425,10 @@ def publish_carousel(image_urls: list[str], caption: str | None = None,
         child_ids: list[str] = []
         for u in urls:
             child = client.post(f"{acct.ig_user_id}/media", image_url=u, is_carousel_item=True)
-            child_ids.append(child.get("id"))
+            if not child.get("id"):
+                raise graph_client.GraphAPIError("Graph API returned no id for a carousel child",
+                                                 error_class="upstream_error")
+            child_ids.append(child["id"])
         parent = client.post(f"{acct.ig_user_id}/media", media_type="CAROUSEL",
                              children=",".join(child_ids), caption=cap)
         cid = parent.get("id")
@@ -621,15 +628,14 @@ def send_message(recipient_id: str, text: str, account: str | None = None) -> di
         if not msg:
             raise V.ValidationError("text must be non-empty")
         res = client.post(f"{acct.ig_user_id}/messages",
-                          recipient='{"id":"' + rid + '"}', message='{"text":' + _json_str(msg) + '}')
+                          recipient=_json_str({"id": rid}), message=_json_str({"text": msg}))
         return {"ok": True, "account": acct.label, "recipient_id": rid, "result": res}
     return _guard("send_message", {"recipient_id": recipient_id, "text": V.truncate(text), "account": account}, _impl)
 
 
-def _json_str(s: str) -> str:
-    """Minimal JSON string encoder for the messages payload."""
-    import json
-    return json.dumps(s, ensure_ascii=False)
+def _json_str(obj: Any) -> str:
+    """JSON-encode a messages payload (never hand-concatenate JSON)."""
+    return json.dumps(obj, ensure_ascii=False)
 
 
 def run() -> None:
