@@ -23,14 +23,28 @@ import hashlib
 import hmac
 import ipaddress
 import os
+import re
 import socket
 from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 
-GRAPH_VERSION = os.environ.get("INSTAGRAM_MCP_GRAPH_VERSION", "v21.0")
+_GRAPH_VERSION_RE = re.compile(r"^v\d{1,3}\.\d{1,2}$")
+
+
+def _graph_version() -> str:
+    """INSTAGRAM_MCP_GRAPH_VERSION is interpolated into the request path; accept only vNN.N."""
+    v = os.environ.get("INSTAGRAM_MCP_GRAPH_VERSION", "v21.0").strip()
+    if not _GRAPH_VERSION_RE.fullmatch(v):
+        raise ValueError(f"INSTAGRAM_MCP_GRAPH_VERSION must look like 'v21.0' (got {v[:20]!r})")
+    return v
+
+
+GRAPH_VERSION = _graph_version()
 DEFAULT_TIMEOUT = float(os.environ.get("INSTAGRAM_MCP_TIMEOUT", "30"))
+# Hard ceiling on pages walked by get_paginated, independent of max_items.
+MAX_PAGES = 50
 
 # The ONLY hosts this client will ever contact.
 ALLOWED_HOSTS: frozenset[str] = frozenset({"graph.facebook.com", "graph.instagram.com"})
@@ -198,7 +212,8 @@ class GraphClient:
         query = dict(params or {})
         query.update(self._auth_params())
         try:
-            with httpx.Client(timeout=self._timeout) as client:
+            # follow_redirects=False: an authenticated request must never be bounced to another host.
+            with httpx.Client(timeout=self._timeout, follow_redirects=False) as client:
                 resp = client.request(method, url, params=query, data=data)
         except httpx.TimeoutException as exc:
             raise GraphAPIError(f"Graph API request timed out after {self._timeout}s", error_class="timeout") from exc
@@ -208,9 +223,15 @@ class GraphClient:
         try:
             body = resp.json()
         except ValueError:
-            body = {}
+            body = None
         if resp.status_code >= 400 or (isinstance(body, dict) and "error" in body):
             raise _map_graph_error(body if isinstance(body, dict) else {}, resp.status_code)
+        if resp.status_code >= 300 or body is None:
+            # 3xx or a 2xx that isn't JSON (captive portal / proxy page): never report as success.
+            raise GraphAPIError(
+                f"unexpected non-JSON response from Graph API (HTTP {resp.status_code})",
+                error_class="upstream_error", http_status=resp.status_code,
+            )
         return body if isinstance(body, dict) else {"data": body}
 
     def get(self, path: str, **params: Any) -> dict[str, Any]:
@@ -239,13 +260,18 @@ class GraphClient:
         """
         out: list[dict[str, Any]] = []
         page = self.get(path, limit=min(limit, max_items), **params)
-        while True:
+        seen_cursors: set[str] = set()
+        for _ in range(MAX_PAGES):
             data = page.get("data") or []
             out.extend(data)
             if len(out) >= max_items:
                 return out[:max_items]
-            after = (page.get("paging") or {}).get("cursors", {}).get("after")
-            has_next = (page.get("paging") or {}).get("next")
-            if not after or not has_next:
+            paging = page.get("paging") or {}
+            after = (paging.get("cursors") or {}).get("after")
+            # Stop on: no cursor/next, an empty page, or a cursor we've already used —
+            # a hostile or buggy upstream must not be able to keep us looping.
+            if not after or not paging.get("next") or not data or after in seen_cursors:
                 return out
+            seen_cursors.add(after)
             page = self.get(path, limit=min(limit, max_items - len(out)), after=after, **params)
+        return out
