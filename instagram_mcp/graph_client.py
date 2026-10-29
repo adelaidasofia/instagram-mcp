@@ -64,7 +64,12 @@ class GraphAPIError(RuntimeError):
 
 def _ip_is_blocked(ip_str: str) -> bool:
     """True if an IP is private / loopback / link-local / reserved / CGNAT / metadata."""
-    addr = ipaddress.ip_address(ip_str)
+    try:
+        addr = ipaddress.ip_address(ip_str.split("%", 1)[0])  # drop IPv6 scope id (fe80::1%eth0)
+    except ValueError:
+        return True  # unparseable -> fail closed
+    if addr.version == 6 and addr.ipv4_mapped is not None:
+        addr = addr.ipv4_mapped  # ::ffff:10.0.0.1 must be judged as 10.0.0.1
     if (
         addr.is_private
         or addr.is_loopback
