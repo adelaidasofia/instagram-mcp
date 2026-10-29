@@ -98,19 +98,41 @@ def _keychain_delete(account: str) -> None:
     )
 
 
+def _write_private(path: Path, text: str) -> None:
+    """Write `text` to `path` atomically, created 0600 from the start (no world-readable window)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, stat.S_IRUSR | stat.S_IWUSR)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+
+
+def _read_json_or_fail(path: Path) -> dict[str, Any]:
+    """Parse a state file. A corrupt file is an error, NOT 'empty' — treating it as empty
+    would let the next save silently destroy every stored account/token."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise AuthError(f"{path.name} is unreadable or corrupt ({type(exc).__name__}); "
+                        f"fix or remove {path} before continuing") from None
+    if not isinstance(data, dict):
+        raise AuthError(f"{path.name} is corrupt (expected a JSON object); fix or remove {path}")
+    return data
+
+
 def _fallback_load() -> dict[str, str]:
     if not TOKENS_FALLBACK_PATH.exists():
         return {}
-    try:
-        return json.loads(TOKENS_FALLBACK_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    return _read_json_or_fail(TOKENS_FALLBACK_PATH)
 
 
 def _fallback_save(data: dict[str, str]) -> None:
-    TOKENS_FALLBACK_PATH.parent.mkdir(parents=True, exist_ok=True)
-    TOKENS_FALLBACK_PATH.write_text(json.dumps(data), encoding="utf-8")
-    os.chmod(TOKENS_FALLBACK_PATH, stat.S_IRUSR | stat.S_IWUSR)  # 0600
+    _write_private(TOKENS_FALLBACK_PATH, json.dumps(data))
 
 
 def _secret_set(account: str, secret: str) -> None:
@@ -149,19 +171,15 @@ def secret_backend() -> str:
 def _load_meta() -> dict[str, Any]:
     if not ACCOUNTS_PATH.exists():
         return {"accounts": {}, "default": None}
-    try:
-        data = json.loads(ACCOUNTS_PATH.read_text(encoding="utf-8"))
-        data.setdefault("accounts", {})
-        data.setdefault("default", None)
-        return data
-    except Exception:
-        return {"accounts": {}, "default": None}
+    data = _read_json_or_fail(ACCOUNTS_PATH)
+    if not isinstance(data.setdefault("accounts", {}), dict):
+        raise AuthError(f"{ACCOUNTS_PATH.name} is corrupt (accounts must be an object)")
+    data.setdefault("default", None)
+    return data
 
 
 def _save_meta(meta: dict[str, Any]) -> None:
-    ACCOUNTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    ACCOUNTS_PATH.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.chmod(ACCOUNTS_PATH, stat.S_IRUSR | stat.S_IWUSR)  # 0600
+    _write_private(ACCOUNTS_PATH, json.dumps(meta, indent=2, ensure_ascii=False))
 
 
 # --------------------------------------------------------------------------- #
