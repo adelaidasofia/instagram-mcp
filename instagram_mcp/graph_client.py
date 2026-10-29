@@ -172,12 +172,13 @@ class GraphClient:
             hashlib.sha256,
         ).hexdigest()
 
+    def _auth_headers(self) -> dict[str, str]:
+        """The token travels in a header, never the URL, so it can't land in access/proxy logs."""
+        return {"Authorization": f"Bearer {self._token}"}
+
     def _auth_params(self) -> dict[str, str]:
-        params = {"access_token": self._token}
         proof = self._appsecret_proof()
-        if proof:
-            params["appsecret_proof"] = proof
-        return params
+        return {"appsecret_proof": proof} if proof else {}
 
     def _url(self, path: str) -> str:
         return f"https://{self._base}/{GRAPH_VERSION}/{path.lstrip('/')}"
@@ -199,7 +200,7 @@ class GraphClient:
         query.update(self._auth_params())
         try:
             with httpx.Client(timeout=self._timeout) as client:
-                resp = client.request(method, url, params=query, data=data)
+                resp = client.request(method, url, params=query, data=data, headers=self._auth_headers())
         except httpx.TimeoutException as exc:
             raise GraphAPIError(f"Graph API request timed out after {self._timeout}s", error_class="timeout") from exc
         except httpx.HTTPError as exc:
