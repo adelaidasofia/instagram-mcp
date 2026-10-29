@@ -75,10 +75,14 @@ def _keychain_available() -> bool:
 
 
 def _keychain_set(account: str, secret: str) -> None:
-    subprocess.run(
-        ["security", "add-generic-password", "-U", "-a", account, "-s", KEYCHAIN_SERVICE, "-w", secret],
-        check=True, capture_output=True, text=True,
-    )
+    try:
+        subprocess.run(
+            ["security", "add-generic-password", "-U", "-a", account, "-s", KEYCHAIN_SERVICE, "-w", secret],
+            check=True, capture_output=True, text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        # CalledProcessError's message embeds the full argv, i.e. the secret. Re-raise without it.
+        raise AuthError(f"keychain write failed for {account!r} (exit {exc.returncode})") from None
 
 
 def _keychain_get(account: str) -> str | None:

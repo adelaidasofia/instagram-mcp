@@ -203,7 +203,8 @@ class GraphClient:
         except httpx.TimeoutException as exc:
             raise GraphAPIError(f"Graph API request timed out after {self._timeout}s", error_class="timeout") from exc
         except httpx.HTTPError as exc:
-            raise GraphAPIError(f"Graph API transport error: {exc}", error_class="network") from exc
+            # Type name only: httpx messages can embed the full request URL (incl. access_token).
+            raise GraphAPIError(f"Graph API transport error ({type(exc).__name__})", error_class="network") from exc
 
         try:
             body = resp.json()
