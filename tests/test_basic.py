@@ -302,3 +302,53 @@ def test_dm_enabled_passes_gate_then_needs_account(monkeypatch):
     res = _call(server.list_conversations)()
     assert res["ok"] is False
     assert res["error_class"] != "needs_app_review"  # got past the gate; now an auth error
+
+
+# --------------------------- account insights params ----------------------- #
+
+def _capture_fake_http(monkeypatch, payload):
+    """Like _install_fake_http, but records the query params of every request."""
+    from instagram_mcp import graph_client
+    calls: list[dict] = []
+
+    class _FakeClient:
+        def __init__(self, *a, **k):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def request(self, method, url, params=None, data=None, **kwargs):
+            calls.append(dict(params or {}))
+            return _FakeResp(200, payload)
+
+    monkeypatch.setattr(graph_client.httpx, "Client", _FakeClient)
+    return calls
+
+
+def test_account_insights_defaults_drop_impressions(monkeypatch):
+    monkeypatch.setenv("INSTAGRAM_MCP_ACCESS_TOKEN", "EAAtoken")
+    monkeypatch.setenv("INSTAGRAM_MCP_IG_USER_ID", "17841400000000000")
+    from instagram_mcp import server
+    assert "impressions" not in server.DEFAULT_ACCOUNT_METRICS.split(",")
+    calls = _capture_fake_http(monkeypatch, {"data": []})
+    res = _call(server.get_account_insights)()
+    assert res["ok"] is True
+    assert calls[-1]["metric"] == server.DEFAULT_ACCOUNT_METRICS
+    assert "metric_type" not in calls[-1]  # optional: not sent unless asked for
+
+
+def test_account_insights_sends_metric_type(monkeypatch):
+    monkeypatch.setenv("INSTAGRAM_MCP_ACCESS_TOKEN", "EAAtoken")
+    monkeypatch.setenv("INSTAGRAM_MCP_IG_USER_ID", "17841400000000000")
+    from instagram_mcp import server
+    calls = _capture_fake_http(monkeypatch, {"data": []})
+    res = _call(server.get_account_insights)(metrics="views,accounts_engaged", metric_type="total_value")
+    assert res["ok"] is True
+    assert calls[-1]["metric"] == "views,accounts_engaged"
+    assert calls[-1]["metric_type"] == "total_value"
+    bad = _call(server.get_account_insights)(metric_type="bogus")
+    assert bad["ok"] is False
