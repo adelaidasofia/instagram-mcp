@@ -23,14 +23,28 @@ import hashlib
 import hmac
 import ipaddress
 import os
+import re
 import socket
 from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 
-GRAPH_VERSION = os.environ.get("INSTAGRAM_MCP_GRAPH_VERSION", "v21.0")
+_GRAPH_VERSION_RE = re.compile(r"^v\d{1,3}\.\d{1,2}$")
+
+
+def _graph_version() -> str:
+    """INSTAGRAM_MCP_GRAPH_VERSION is interpolated into the request path; accept only vNN.N."""
+    v = os.environ.get("INSTAGRAM_MCP_GRAPH_VERSION", "v21.0").strip()
+    if not _GRAPH_VERSION_RE.fullmatch(v):
+        raise ValueError(f"INSTAGRAM_MCP_GRAPH_VERSION must look like 'v21.0' (got {v[:20]!r})")
+    return v
+
+
+GRAPH_VERSION = _graph_version()
 DEFAULT_TIMEOUT = float(os.environ.get("INSTAGRAM_MCP_TIMEOUT", "30"))
+# Hard ceiling on pages walked by get_paginated, independent of max_items.
+MAX_PAGES = 50
 
 # The ONLY hosts this client will ever contact.
 ALLOWED_HOSTS: frozenset[str] = frozenset({"graph.facebook.com", "graph.instagram.com"})
@@ -64,7 +78,12 @@ class GraphAPIError(RuntimeError):
 
 def _ip_is_blocked(ip_str: str) -> bool:
     """True if an IP is private / loopback / link-local / reserved / CGNAT / metadata."""
-    addr = ipaddress.ip_address(ip_str)
+    try:
+        addr = ipaddress.ip_address(ip_str.split("%", 1)[0])  # drop IPv6 scope id (fe80::1%eth0)
+    except ValueError:
+        return True  # unparseable -> fail closed
+    if addr.version == 6 and addr.ipv4_mapped is not None:
+        addr = addr.ipv4_mapped  # ::ffff:10.0.0.1 must be judged as 10.0.0.1
     if (
         addr.is_private
         or addr.is_loopback
@@ -172,12 +191,13 @@ class GraphClient:
             hashlib.sha256,
         ).hexdigest()
 
+    def _auth_headers(self) -> dict[str, str]:
+        """The token travels in a header, never the URL, so it can't land in access/proxy logs."""
+        return {"Authorization": f"Bearer {self._token}"}
+
     def _auth_params(self) -> dict[str, str]:
-        params = {"access_token": self._token}
         proof = self._appsecret_proof()
-        if proof:
-            params["appsecret_proof"] = proof
-        return params
+        return {"appsecret_proof": proof} if proof else {}
 
     def _url(self, path: str) -> str:
         return f"https://{self._base}/{GRAPH_VERSION}/{path.lstrip('/')}"
@@ -198,19 +218,27 @@ class GraphClient:
         query = dict(params or {})
         query.update(self._auth_params())
         try:
-            with httpx.Client(timeout=self._timeout) as client:
-                resp = client.request(method, url, params=query, data=data)
+            # follow_redirects=False: an authenticated request must never be bounced to another host.
+            with httpx.Client(timeout=self._timeout, follow_redirects=False) as client:
+                resp = client.request(method, url, params=query, data=data, headers=self._auth_headers())
         except httpx.TimeoutException as exc:
             raise GraphAPIError(f"Graph API request timed out after {self._timeout}s", error_class="timeout") from exc
         except httpx.HTTPError as exc:
-            raise GraphAPIError(f"Graph API transport error: {exc}", error_class="network") from exc
+            # Type name only: httpx messages can embed the full request URL (incl. access_token).
+            raise GraphAPIError(f"Graph API transport error ({type(exc).__name__})", error_class="network") from exc
 
         try:
             body = resp.json()
         except ValueError:
-            body = {}
+            body = None
         if resp.status_code >= 400 or (isinstance(body, dict) and "error" in body):
             raise _map_graph_error(body if isinstance(body, dict) else {}, resp.status_code)
+        if resp.status_code >= 300 or body is None:
+            # 3xx or a 2xx that isn't JSON (captive portal / proxy page): never report as success.
+            raise GraphAPIError(
+                f"unexpected non-JSON response from Graph API (HTTP {resp.status_code})",
+                error_class="upstream_error", http_status=resp.status_code,
+            )
         return body if isinstance(body, dict) else {"data": body}
 
     def get(self, path: str, **params: Any) -> dict[str, Any]:
@@ -239,13 +267,18 @@ class GraphClient:
         """
         out: list[dict[str, Any]] = []
         page = self.get(path, limit=min(limit, max_items), **params)
-        while True:
+        seen_cursors: set[str] = set()
+        for _ in range(MAX_PAGES):
             data = page.get("data") or []
             out.extend(data)
             if len(out) >= max_items:
                 return out[:max_items]
-            after = (page.get("paging") or {}).get("cursors", {}).get("after")
-            has_next = (page.get("paging") or {}).get("next")
-            if not after or not has_next:
+            paging = page.get("paging") or {}
+            after = (paging.get("cursors") or {}).get("after")
+            # Stop on: no cursor/next, an empty page, or a cursor we've already used —
+            # a hostile or buggy upstream must not be able to keep us looping.
+            if not after or not paging.get("next") or not data or after in seen_cursors:
                 return out
+            seen_cursors.add(after)
             page = self.get(path, limit=min(limit, max_items - len(out)), after=after, **params)
+        return out

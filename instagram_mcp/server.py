@@ -34,6 +34,7 @@ INSTAGRAM_MCP_IG_USER_ID for a single zero-config account labelled "env".
 
 from __future__ import annotations
 
+import json
 import os
 import time
 from typing import Any
@@ -56,7 +57,9 @@ COMMENT_FIELDS = "id,text,username,timestamp,like_count,hidden"
 # and every insights tool accepts a `metrics`/`period` override so the caller can
 # adapt to whatever the live API wants. A version mismatch returns Meta's own
 # error (which names the right metric) rather than failing opaquely.
-DEFAULT_ACCOUNT_METRICS = "reach,impressions,profile_views,follower_count"
+# "impressions" is no longer accepted by the account insights endpoint; newer metrics
+# (views, accounts_engaged, total_interactions, profile_views) need metric_type=total_value.
+DEFAULT_ACCOUNT_METRICS = "reach,follower_count"
 DEFAULT_MEDIA_METRICS = "reach,saved,likes,comments,shares,total_interactions"
 DEFAULT_AUDIENCE_METRIC = "follower_demographics"
 
@@ -135,7 +138,10 @@ def _wait_container_ready(client: graph_client.GraphClient, container_id: str,
         f"media container {container_id} not ready after {timeout_s}s", error_class="timeout")
 
 
-def _publish_container(client: graph_client.GraphClient, ig_user_id: str, container_id: str) -> dict[str, Any]:
+def _publish_container(client: graph_client.GraphClient, ig_user_id: str, container_id: str | None) -> dict[str, Any]:
+    if not container_id:
+        raise graph_client.GraphAPIError("Graph API returned no container id; nothing published",
+                                         error_class="upstream_error")
     published = client.post(f"{ig_user_id}/media_publish", creation_id=container_id)
     return {"ok": True, "media_id": published.get("id"), "container_id": container_id}
 
@@ -275,20 +281,23 @@ def get_media(media_id: str, account: str | None = None) -> dict[str, Any]:
 
 @mcp.tool()
 def get_account_insights(account: str | None = None, *, metrics: str | None = None,
-                         period: str = "day") -> dict[str, Any]:
-    """Account-level analytics (reach, impressions, profile views, follower count).
+                         period: str = "day", metric_type: str | None = None) -> dict[str, Any]:
+    """Account-level analytics (reach, follower count, views, engagement).
 
-    metrics: comma-separated Graph metric names (default reach,impressions,profile_views,
-    follower_count). period: day|week|days_28|lifetime. Exact available metrics vary by
-    Graph API version; on a mismatch the Meta error names the correct metric.
+    metrics: comma-separated Graph metric names (default reach,follower_count).
+    period: day|week|days_28|lifetime. metric_type: pass "total_value" for views,
+    accounts_engaged, total_interactions, profile_views, likes, comments, shares, saves.
+    On a mismatch the Meta error names the correct metric.
     """
     def _impl() -> dict[str, Any]:
         client, acct = auth.client_for(account)
         m = metrics or DEFAULT_ACCOUNT_METRICS
         per = V.validate_enum(period, {"day", "week", "days_28", "lifetime"}, field="period", default="day")
-        data = client.get(f"{acct.ig_user_id}/insights", metric=m, period=per)
+        mt = V.validate_enum(metric_type, {"total_value", "time_series"}, field="metric_type")
+        data = client.get(f"{acct.ig_user_id}/insights", metric=m, period=per, metric_type=mt)
         return {"ok": True, "account": acct.label, "period": per, "insights": data.get("data", [])}
-    return _guard("get_account_insights", {"account": account, "metrics": metrics, "period": period}, _impl)
+    return _guard("get_account_insights",
+                  {"account": account, "metrics": metrics, "period": period, "metric_type": metric_type}, _impl)
 
 
 @mcp.tool()
@@ -421,7 +430,10 @@ def publish_carousel(image_urls: list[str], caption: str | None = None,
         child_ids: list[str] = []
         for u in urls:
             child = client.post(f"{acct.ig_user_id}/media", image_url=u, is_carousel_item=True)
-            child_ids.append(child.get("id"))
+            if not child.get("id"):
+                raise graph_client.GraphAPIError("Graph API returned no id for a carousel child",
+                                                 error_class="upstream_error")
+            child_ids.append(child["id"])
         parent = client.post(f"{acct.ig_user_id}/media", media_type="CAROUSEL",
                              children=",".join(child_ids), caption=cap)
         cid = parent.get("id")
@@ -621,15 +633,14 @@ def send_message(recipient_id: str, text: str, account: str | None = None) -> di
         if not msg:
             raise V.ValidationError("text must be non-empty")
         res = client.post(f"{acct.ig_user_id}/messages",
-                          recipient='{"id":"' + rid + '"}', message='{"text":' + _json_str(msg) + '}')
+                          recipient=_json_str({"id": rid}), message=_json_str({"text": msg}))
         return {"ok": True, "account": acct.label, "recipient_id": rid, "result": res}
     return _guard("send_message", {"recipient_id": recipient_id, "text": V.truncate(text), "account": account}, _impl)
 
 
-def _json_str(s: str) -> str:
-    """Minimal JSON string encoder for the messages payload."""
-    import json
-    return json.dumps(s, ensure_ascii=False)
+def _json_str(obj: Any) -> str:
+    """JSON-encode a messages payload (never hand-concatenate JSON)."""
+    return json.dumps(obj, ensure_ascii=False)
 
 
 def run() -> None:

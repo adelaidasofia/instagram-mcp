@@ -3,6 +3,11 @@
 All notable changes to instagram-mcp are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning is [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- `get_account_insights` no longer fails with default arguments: dropped `impressions` (rejected by the account insights endpoint since Graph v21.0) from the default metrics, which are now `reach,follower_count`, and added an optional `metric_type` parameter (`total_value` | `time_series`) required by newer metrics such as `views`, `accounts_engaged`, `total_interactions` and `profile_views`.
+
 ## [0.1.2] — 2026-06-17
 
 ### Added
