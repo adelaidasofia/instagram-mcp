@@ -10,8 +10,10 @@ a malformed id reach graph.facebook.com and bounce back as an opaque OAuthExcept
 
 from __future__ import annotations
 
+import ipaddress
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 # Instagram caption hard limit (Meta-documented).
 CAPTION_MAX = 2200
@@ -118,11 +120,30 @@ def validate_public_https_url(value: str, *, field: str = "media_url") -> str:
     if value is None or not isinstance(value, str):
         raise ValidationError(f"{field} must be a string")
     v = value.strip()
+    if any(ord(c) < 0x20 or ord(c) == 0x7F or c.isspace() for c in v):
+        raise ValidationError(f"{field} must not contain whitespace or control characters")
     if not v.lower().startswith("https://"):
         raise ValidationError(f"{field} must be an https:// URL (Instagram refuses non-https media)")
-    host = re.sub(r"^https://", "", v, flags=re.I).split("/", 1)[0].split(":", 1)[0].lower()
-    if host in {"localhost", "127.0.0.1", "0.0.0.0", "::1"} or host.endswith(".local"):
+    try:
+        parsed = urlparse(v)
+        host = (parsed.hostname or "").lower().rstrip(".")
+        parsed.port  # noqa: B018 — raises ValueError on a malformed port
+    except ValueError:
+        raise ValidationError(f"{field} is not a valid URL") from None
+    if not host:
+        raise ValidationError(f"{field} has no host")
+    if parsed.username is not None or parsed.password is not None:
+        # https://good.example@127.0.0.1/ style confusion + credential smuggling.
+        raise ValidationError(f"{field} must not contain credentials (user:pass@host)")
+    if host in {"localhost", "0.0.0.0", "::1"} or host.endswith((".local", ".localhost", ".internal")):
         raise ValidationError(f"{field} host {host!r} is not publicly reachable; Instagram cannot fetch it")
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return v  # a DNS name; resolution happens on Meta's side
+    if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+            or ip.is_multicast or ip.is_unspecified):
+        raise ValidationError(f"{field} host {host!r} is a non-public IP address")
     return v
 
 
