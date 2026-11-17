@@ -133,7 +133,9 @@ def record(
         payload["extra"] = sanitize_payload(extra)
     try:
         _ensure_dir()
-        with AUDIT_PATH.open("a", encoding="utf-8") as f:
+        # Created 0600: the log holds account ids and caption/comment snippets.
+        fd = os.open(AUDIT_PATH, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        with os.fdopen(fd, "a", encoding="utf-8") as f:
             f.write(json.dumps(payload, ensure_ascii=False) + "\n")
     except Exception:
         # Audit must never break the tool call. Silent failure here is acceptable.
