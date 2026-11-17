@@ -209,7 +209,7 @@ def _install_fake_http(monkeypatch, status, payload):
         def __exit__(self, *a):
             return False
 
-        def request(self, method, url, params=None, data=None):
+        def request(self, method, url, params=None, data=None, headers=None):
             return _FakeResp(status, payload)
 
     monkeypatch.setattr(graph_client.httpx, "Client", _FakeClient)
